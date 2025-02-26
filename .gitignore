@@ -1,0 +1,13 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+docs/build/
+docs/site/
+docs/Manifest.toml
+deps/build.log
+LocalPreferences.toml
+Manifest.toml
+.vscode/
+.DS_Store
+.gitlab-ci-local
+coverage/
