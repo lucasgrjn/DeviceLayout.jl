@@ -7,7 +7,9 @@
 
 DeviceLayout.jl is a [Julia](http://julialang.org) package for computer-aided design (CAD) of quantum integrated circuits, developed at the AWS Center for Quantum Computing. The package supports the generation of 2D layouts and 3D models of complex devices using a low-level geometry interface together with a high-level schematic-driven workflow.
 
-## Key features
+## Why use this package?
+
+DeviceLayout.jl provides functionality for 2D/2.5D device CAD, including generation of GDS layouts for fabrication as well as 3D models for electromagnetic simulation. Package development aims to allow designers to produce and iterate on layouts quickly and easily, with particular attention to scalability in support of larger quantum processors and growing, collaborative teams. Key features include:
 
   - Geometry-level layout with rich geometry types like polygons, ellipses, and paths
   - Schematic-driven layout, allowing users to manage complexity by maintaining separate levels of abstraction for component geometry and device connectivity

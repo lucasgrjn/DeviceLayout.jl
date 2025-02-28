@@ -2,9 +2,32 @@
 
 DeviceLayout.jl is a [Julia](http://julialang.org) package for computer-aided design (CAD) of quantum integrated circuits developed at the AWS Center for Quantum Computing. The package supports the generation of 2D layouts and 3D models of complex devices using a low-level geometry interface together with a high-level schematic-driven workflow.
 
+## Why use this package?
+
+DeviceLayout.jl provides functionality for 2D/2.5D device CAD, including generation of GDS layouts for fabrication as well as 3D models for electromagnetic simulation. Package development aims to allow designers to produce and iterate on layouts quickly and easily, with particular attention to scalability in support of larger quantum processors and growing, collaborative teams. Key features include:
+
+  - Geometry-level layout with rich geometry types like polygons, ellipses, and paths
+  - Schematic-driven layout, allowing users to manage complexity by maintaining separate levels of abstraction for component geometry and device connectivity
+  - 3D modeling and meshing (via [Open CASCADE Technology](https://dev.opencascade.org/) and [Gmsh](https://gmsh.info/)), which takes advantage of rich geometry and schematic information to improve meshing and allow programmatic generation of configurations for simulation software (like [*Palace*](https://awslabs.github.io/palace/stable/), an open-source tool for electromagnetic finite-element analysis also developed at the AWS CQC)
+  - Built-in support for common elements of superconducting quantum processors like coplanar waveguides, air bridges, and flip-chip assemblies
+  - GDSII and graphics format export for 2D layouts, as well as various standard formats for 3D models and meshes
+  - Explicit unit support without sacrificing performance
+  - Users write code in Julia, a scientific programming language that combines high performance and ease of use
+  - The [Julia package manager](https://pkgdocs.julialang.org/v1/) offers portability and reproducibility for design projects in collaborations of any size
+  - Teams can manage their own process design kit as a set of Julia packages in a private registry, leveraging the package manager for versioning process technologies and components
+
+This documentation includes some examples of what you can do with DeviceLayout.jl, including a [17-qubit quantum processor](./examples/qpu17.md) and [simulation of a transmon and resonator with Palace](./examples/singletransmon.md).
+
+```@raw html
+<div style="display: flex; justify-content: center; gap: 20px">
+<a href="examples/qpu17"> <img src="examples/qpu17_falsecolor.png" style="margin-right: 100px; height: 288px; width: auto; object-fit: contain;"/> </a>
+<a href="examples/singletransmon"> <img src="assets/single_transmon_mesh.png" style="height: 288px; width: auto; object-fit: contain;"/> </a>
+</div>
+```
+
 ## Installation
 
-Julia can be downloaded [here](https://julialang.org/downloads/). We support Julia v1.9 or later.
+Julia can be downloaded [here](https://julialang.org/downloads/). We support Julia v1.10 or later.
 
 From Julia, install DeviceLayout.jl using the built-in package manager:
 
