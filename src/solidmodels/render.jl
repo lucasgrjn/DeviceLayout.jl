@@ -428,7 +428,7 @@ samplingrate(path::Paths.Node, local_size) =
     Base.@kwdef struct MeshingParameters
         mesh_scale::Float64 = 1.0
         mesh_order::Int = 1
-        α_default::Float64 = 1.0
+        α_default::Float64 = 0.9
         apply_size_to_surfaces::Bool = false
         high_order_optimize::Int = 1
         surface_mesh_algorithm::Int = 6
@@ -450,7 +450,8 @@ fields throughout the domain.
     difficult (and prone to errors).
   - `α_default` specifies the default value of `α` to use for `MeshSized` entities where `α`
     is set to less than 0, `α_default ∈ (0, 1]` is particularly used for the default grading
-    of `Path` entities.
+    of `Path` entities. A value closer to 1 can result in an unstable meshing algorithm in gmsh,
+    particularly for complex geometries.
   - `apply_size_to_surfaces=true` will cause the mesh sizing field to specify the size within
     any sized entities, as opposed to only along the perimeter of the entity if
     `apply_size_to_surfaces=false`. Setting `apply_size_to_surfaces=true` will result in a
@@ -470,7 +471,7 @@ fields throughout the domain.
 Base.@kwdef struct MeshingParameters
     mesh_scale::Float64 = 1.0
     mesh_order::Int = 1
-    α_default::Float64 = 1.0
+    α_default::Float64 = 0.9
     apply_size_to_surfaces::Bool = false
     high_order_optimize::Int = 1
     surface_mesh_algorithm::Int = 6

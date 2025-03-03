@@ -672,10 +672,10 @@ import DeviceLayout.SolidModels.STP_UNIT
     @test SolidModels.meshgrading(rsr) == 1.1
 
     # Optional sizing field.
-    sty = OptionalStyle(MeshSized(1μm, 0.9), :refine, false_style=MeshSized(0.5μm, 0.6))
+    sty = OptionalStyle(MeshSized(1μm, 0.8), :refine, false_style=MeshSized(0.5μm, 0.6))
     rs = styled(r, sty)
     @test SolidModels.meshsize(rs, refine=true) == Unitful.ustrip(STP_UNIT, 1μm)
-    @test SolidModels.meshgrading(rs, refine=true) == 0.9
+    @test SolidModels.meshgrading(rs, refine=true) == 0.8
     @test SolidModels.meshsize(rs, refine=false) == Unitful.ustrip(STP_UNIT, 0.5μm)
     @test SolidModels.meshgrading(rs, refine=false) == 0.6
 
@@ -683,7 +683,7 @@ import DeviceLayout.SolidModels.STP_UNIT
     rr = Polygons.Rounded(rs, 1μm)
     rrs = styled(rr, sty)
     @test SolidModels.meshsize(rrs, refine=true) == Unitful.ustrip(STP_UNIT, 1μm)
-    @test SolidModels.meshgrading(rrs, refine=true) == 0.9
+    @test SolidModels.meshgrading(rrs, refine=true) == 0.8
     @test SolidModels.meshsize(rrs, refine=false) == Unitful.ustrip(STP_UNIT, 0.5μm)
     @test SolidModels.meshgrading(rrs, refine=false) == 0.6
 
@@ -691,7 +691,7 @@ import DeviceLayout.SolidModels.STP_UNIT
     rr = OptionalStyle(Polygons.Rounded(0.5μm), :round, false_style=sty)(r)
     @test SolidModels.meshsize(rr, refine=true, round=false) ==
           Unitful.ustrip(STP_UNIT, 1μm)
-    @test SolidModels.meshgrading(rr, refine=true, round=false) == 0.9
+    @test SolidModels.meshgrading(rr, refine=true, round=false) == 0.8
     @test SolidModels.meshsize(rr, refine=false, round=false) ==
           Unitful.ustrip(STP_UNIT, 0.5μm)
     @test SolidModels.meshgrading(rr, refine=false, round=false) == 0.6
@@ -705,7 +705,7 @@ import DeviceLayout.SolidModels.STP_UNIT
     ds = OptionalStyle(Polygons.Rounded(0.5μm), :round, false_style=sty, default=false)(d)
     @test SolidModels.meshsize(ds, refine=true, round=false) ==
           Unitful.ustrip(STP_UNIT, 1μm)
-    @test SolidModels.meshgrading(ds, refine=true, round=false) == 0.9
+    @test SolidModels.meshgrading(ds, refine=true, round=false) == 0.8
     @test SolidModels.meshsize(ds, refine=false, round=false) ==
           Unitful.ustrip(STP_UNIT, 0.5μm)
     @test SolidModels.meshgrading(ds, refine=false, round=false) == 0.6
@@ -716,11 +716,11 @@ import DeviceLayout.SolidModels.STP_UNIT
 
     # Styled Ellipse
     e = Ellipse(2 .* Point(2.0μm, 1.0μm), (2.0μm, 1.0μm), 45°)
-    sty = OptionalStyle(MeshSized(0.5μm, 0.9), :refine, false_style=MeshSized(1.0μm, 0.6))
+    sty = OptionalStyle(MeshSized(0.5μm, 0.8), :refine, false_style=MeshSized(1.0μm, 0.6))
     es = styled(e, sty)
     @test SolidModels.to_primitives(sm, es) == es.ent
     @test SolidModels.meshsize(es, refine=true) == Unitful.ustrip(STP_UNIT, 0.5μm)
-    @test SolidModels.meshgrading(es, refine=true) == 0.9
+    @test SolidModels.meshgrading(es, refine=true) == 0.8
     @test SolidModels.meshsize(es, refine=false) == Unitful.ustrip(STP_UNIT, 1.0μm)
     @test SolidModels.meshgrading(es, refine=false) == 0.6
 
