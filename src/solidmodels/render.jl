@@ -327,8 +327,13 @@ end
 # Note: this is called during SolidModel rendering after flattening, so we don't worry about decorations
 # Similarly generic tapers have been resolved
 
-# Fallback: use to_polygons
-function to_primitives(::SolidModel, f::Paths.Segment, s::Paths.Style; kwargs...)
+# Fallback: use pathtopolys to get CurvilinearPolygons
+function to_primitives(
+    ::SolidModel,
+    f::Paths.Segment{T},
+    s::Paths.Style;
+    kwargs...
+) where {T}
     return pathtopolys(f, s; kwargs...)
 end
 
@@ -342,10 +347,10 @@ function to_primitives(
     return vcat(to_primitives.(sm, f.segments, s.styles; kwargs...)...)
 end
 
-# Terminations are only used with Straight and generate one or two [Rounded] Polygons
+# Terminations generate up to two [Rounded] Polygons
 function to_primitives(
     sm::SolidModel,
-    seg::Paths.Straight{T},
+    seg::Paths.Segment{T},
     sty::Union{Paths.TraceTermination, Paths.CPWOpenTermination, Paths.CPWShortTermination};
     kwargs...
 ) where {T}

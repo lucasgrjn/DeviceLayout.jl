@@ -189,6 +189,16 @@ import DeviceLayout.SolidModels.STP_UNIT
         isapprox.([x0, y0, x1, y1], ustrip.(STP_UNIT, [x0d, y0d, x1d, y1d]), atol=1e-6)
     )
 
+    # Termination on curve is still drawn with circular arcs
+    cs = CoordinateSystem("test", nm)
+    pa = Path(0nm, 0nm)
+    turn!(pa, 90°, 10μm, Paths.SimpleCPW(5μm, 2μm))
+    terminate!(pa; rounding=2.5μm)
+    place!(cs, pa, SemanticMeta(:test))
+    sm = SolidModel("test"; overwrite=true)
+    render!(sm, cs)
+    @test length(SolidModels.gmsh.model.occ.getEntities(0)) < 20 # would be >100 points if discretized
+
     # Compound segment/style
     cs = CoordinateSystem("test", nm)
     pa = Path(0nm, 0nm)

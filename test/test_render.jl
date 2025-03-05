@@ -694,12 +694,12 @@ end
 
             # Test Layout.jl#68
             els = initial ? reverse(elements(c)) : elements(c)
+            pts_approx(el) = [round.(pt, digits=9) for pt in ustrip.(nm, points(el))]
             # First and second element should be CPW polygons
-            straight_points = Set(reduce(vcat, points.(els[1:2])))
+            straight_points = Set(reduce(vcat, pts_approx.(els[1:2])))
 
             # Third element will be the terminating polygon
-            termination_points = Set(points(els[3]))
-
+            termination_points = Set(pts_approx(els[3]))
             # Test that there are four points in common with CPW polygons and terminating polygon
             @test length(intersect(straight_points, termination_points)) == 4
 
@@ -785,6 +785,43 @@ end
         straight!(pa, 100μm, Paths.CPW(10μm, 6μm))
         attach!(pa, sref(c), 50μm) # +Test that attachment doesn't lead to terminationlength error
         terminate!(pa, gap=0μm, rounding=1μm)
+        c = Cell("test", nm)
+        render!(c, pa, GDSMeta())
+
+        # Termination with rounding on curve
+        # open
+        pa = Path(nm)
+        turn!(pa, 90°, 100μm, Paths.CPW(10μm, 6μm))
+        terminate!(pa, rounding=3μm)
+        terminate!(pa, rounding=3μm, initial=true)
+        @test iszero(α0(pa))
+        @test p0(pa) == Point(-6, 0)μm
+        @test α1(pa) ≈ 90°
+        @test p1(pa) ≈ Point(100, 106)μm
+        c = Cell("test", nm)
+        render!(c, pa, GDSMeta())
+        @test bounds(c).ll.y < -11μm # Drawn as though straight, extends at slight angle
+        # short
+        pa = Path(nm)
+        turn!(pa, pi / 2, 100μm, Paths.CPW(10μm, 6μm))
+        terminate!(pa, gap=0μm, rounding=3μm)
+        terminate!(pa, gap=0μm, rounding=3μm, initial=true)
+        @test iszero(α0(pa))
+        @test p0(pa) == Point(0, 0)μm
+        @test α1(pa) ≈ 90°
+        @test p1(pa) ≈ Point(100, 100)μm
+        c = Cell("test", nm)
+        render!(c, pa, GDSMeta())
+
+        # Same with trace
+        pa = Path(nm)
+        turn!(pa, pi / 2, 100μm, Paths.Trace(10μm))
+        terminate!(pa, rounding=5μm)
+        terminate!(pa, rounding=5μm, initial=true)
+        @test iszero(α0(pa))
+        @test p0(pa) == Point(0, 0)μm
+        @test α1(pa) ≈ 90°
+        @test p1(pa) ≈ Point(100, 100)μm
         c = Cell("test", nm)
         render!(c, pa, GDSMeta())
     end

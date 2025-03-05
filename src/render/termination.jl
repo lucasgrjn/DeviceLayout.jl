@@ -80,7 +80,16 @@ function _poly(f::Paths.Straight{T}, s::Paths.CPWOpenTermination) where {T}
     end
 end
 
-function to_polygons(f::Paths.Straight{T}, s::Paths.CPWOpenTermination; kwargs...) where {T}
+function to_polygons(f::Paths.Segment{T}, s::Paths.CPWOpenTermination; kwargs...) where {T}
+    return to_polygons(_poly(f, s); kwargs...)
+end
+
+# Disambiguate from compound fallback
+function to_polygons(
+    f::Paths.CompoundSegment{T},
+    s::Paths.CPWOpenTermination;
+    kwargs...
+) where {T}
     return to_polygons(_poly(f, s); kwargs...)
 end
 
@@ -124,8 +133,13 @@ function _poly(f::Paths.Straight{T}, s::Paths.CPWShortTermination) where {T}
     return [round1(poly1), round2(poly2)]
 end
 
+function to_polygons(f::Paths.Segment{T}, s::Paths.CPWShortTermination; kwargs...) where {T}
+    return to_polygons.(_poly(f, s); kwargs...)
+end
+
+# Disambiguate from compound fallback
 function to_polygons(
-    f::Paths.Straight{T},
+    f::Paths.CompoundSegment{T},
     s::Paths.CPWShortTermination;
     kwargs...
 ) where {T}
@@ -144,6 +158,29 @@ function _poly(f::Paths.Straight{T}, s::Paths.TraceTermination) where {T}
     )
 end
 
-function to_polygons(f::Paths.Straight{T}, s::Paths.TraceTermination; kwargs...) where {T}
+function to_polygons(f::Paths.Segment{T}, s::Paths.TraceTermination; kwargs...) where {T}
     return to_polygons(_poly(f, s); kwargs...)
+end
+
+# Disambiguate from compound fallback
+function to_polygons(
+    f::Paths.CompoundSegment{T},
+    s::Paths.TraceTermination;
+    kwargs...
+) where {T}
+    return to_polygons(_poly(f, s); kwargs...)
+end
+
+## Generic segments—just draw as though straight
+function _poly(
+    f::Paths.Segment{T},
+    s::Union{Paths.TraceTermination, Paths.CPWOpenTermination, Paths.CPWShortTermination}
+) where {T}
+    straight = if s.initial
+        p = p1(f) - pathlength(f) * Point(cos(α1(f)), sin(α1(f)))
+        Paths.Straight{T}(pathlength(f), p, α1(f))
+    else
+        Paths.Straight{T}(pathlength(f), p0(f), α0(f))
+    end
+    return _poly(straight, s)
 end
