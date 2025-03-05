@@ -633,6 +633,7 @@ end
         @test Paths.gap(sty) === 6000.0nm
         @test Paths.trace(sty) === 10000.0nm
         @test pa[1].sty isa Paths.CPWOpenTermination
+        @test bounds(pa).ll ≈ -Point(pa[1].sty.gap, Paths.extent(pa[1].sty))
 
         pa = Path(μm)
         sty = launch!(pa, trace1=4.2μm, gap1=3801nm)

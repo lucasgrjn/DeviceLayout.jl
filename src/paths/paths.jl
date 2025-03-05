@@ -1175,14 +1175,18 @@ If the preceding style is a CPW, this is a "short termination" if `iszero(gap)` 
 
 Rounding of corners may be specified with radius given by `rounding`. Rounding keeps the
 trace length constant by removing some length from the preceding segment and adding a
-rounded section of equivalent maximum length. (This produces a small quirk if you terminate
-a curved segment with rounding—the termination is "straight" starting at `rounding`
-away from the end of the curve, meaning that the `α0(pa)`)
+rounded section of equivalent maximum length.
+
+Terminations can be applied on curves without changing the underlying curve. If you add a
+segment after a termination, it will start a straight distance `gap` away from where the original
+curve ended. However, rounded terminations are always drawn as though straight from the point where
+rounding starts, slightly before the end of the curve. This allows the rounded corners to be represented
+as exact circular arcs.
 
 If the preceding style is a trace, the termination only rounds the corners at the end of the
 segment or does nothing if `iszero(rounding)`.
 
-If `initial`, the termination is applied at the beginning of the `Path`.
+If `initial`, the termination is appended before the beginning of the `Path`.
 """
 function terminate!(
     pa::Path{T};
@@ -1192,6 +1196,7 @@ function terminate!(
 ) where {T}
     termlen = gap + rounding
     iszero(termlen) && return
+    termsty = Termination(pa, rounding; initial=initial, cpwopen=!iszero(gap))
     # Nonzero rounding: splice and delete to make room for rounded part
     if !iszero(rounding)
         orig_sty = initial ? undecorated(style0(pa)) : laststyle(pa)
@@ -1221,17 +1226,30 @@ function terminate!(
                 )
             )
         splice!(pa, split_idx, split(split_node, split_len))
-        deleteat!(pa, initial ? firstindex(pa) : lastindex(pa))
+        termsty = if initial
+            Termination(Path(pa[2:end]), rounding; initial=initial, cpwopen=!iszero(gap))
+        else
+            Termination(Path(pa[1:(end - 1)]), rounding; initial=initial, cpwopen=!iszero(gap))
+        end
     end
-
-    termsty = Termination(pa, rounding; initial=initial, cpwopen=!iszero(gap))
 
     if initial
         α = α0(pa)
-        p = p0(pa) - termlen * Point(cos(α), sin(α))
-        pushfirst!(pa, Straight{T}(termlen, p, α), termsty)
+        p = p0(pa) - gap * Point(cos(α), sin(α))
+        pa.p0 = p
+        pushfirst!(pa, Straight{T}(gap, p, α), termsty)
+        if !iszero(rounding)
+            # merge first two segments and apply termsty
+            simplify!(pa, 1:2)
+            setstyle!(pa[1], termsty)
+        end
     else
-        straight!(pa, termlen, termsty)
+        straight!(pa, gap, termsty)
+        if !iszero(rounding)
+            # merge last two segments and apply termsty
+            simplify!(pa, (length(pa) - 1):length(pa))
+            setstyle!(pa[end], termsty)
+        end
     end
 end
 
