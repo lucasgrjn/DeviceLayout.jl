@@ -1159,9 +1159,8 @@ function _launch!(p::Path{T}; kwargs...) where {T <: Coordinate}
     for (a, b) in zip(args, styles)
         !iszero(a) && straight!(p, a, b)
     end
-    if !iszero(extround)
-        terminate!(p; rounding=extround, initial=y)
-    end
+
+    terminate!(p; rounding=extround, initial=y)
 
     return CPW(trace1, gap1)
 end

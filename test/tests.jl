@@ -629,9 +629,10 @@ end
         launch!(pa) # terminate path with launcher
 
         pa = Path(nm)
-        sty = launch!(pa)
+        sty = launch!(pa; rounding=0nm)
         @test Paths.gap(sty) === 6000.0nm
         @test Paths.trace(sty) === 10000.0nm
+        @test pa[1].sty isa Paths.CPWOpenTermination
 
         pa = Path(μm)
         sty = launch!(pa, trace1=4.2μm, gap1=3801nm)
