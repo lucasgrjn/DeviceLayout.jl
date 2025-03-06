@@ -4,6 +4,7 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://aws-cqc.github.io/DeviceLayout.jl/dev)
 [![CI](https://github.com/aws-cqc/DeviceLayout.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/aws-cqc/DeviceLayout.jl/actions/workflows/CI.yml)
 [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![codecov](https://codecov.io/gh/aws-cqc/DeviceLayout.jl/graph/badge.svg?token=D3EQ7I4LP0)](https://codecov.io/gh/aws-cqc/DeviceLayout.jl)
 
 DeviceLayout.jl is a [Julia](http://julialang.org) package for computer-aided design (CAD) of quantum integrated circuits, developed at the AWS Center for Quantum Computing. The package supports the generation of 2D layouts and 3D models of complex devices using a low-level geometry interface together with a high-level schematic-driven workflow.
 
