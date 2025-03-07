@@ -65,7 +65,7 @@ you want. Maybe a wire needs to be routed differently, or a component needs to b
 based on its position.
 
 SchematicDrivenLayout allows you to inspect and modify a `Schematic` to make these sorts of
-changes before `build` renders it into polygons.
+changes before `render!` renders it into polygons.
 
 When you construct a `SchematicGraph`, you don't need to know exactly where a component will
 end up. You can usually calculate it yourself, but there are some built-in utilities to
@@ -100,7 +100,7 @@ One other useful trick allows a kind of interactive routing. When you view your 
 built from the schematic, you may find that a route bends too sharply or goes too close to a
 component. You can write down the points it needs to go to in the schematic's global coordinate system,
 and add them as waypoints to the route. That is, if you go back to your layout script,
-before you `build!` the layout, you can do something like
+before you `render!` the layout, you can do something like
 
 ```julia
 ### original script
@@ -115,8 +115,8 @@ check!(floorplan)
 route_node.component.global_waypoints = true
 route_node.component.r.waypoints = [Point(600.0μm, -3000.0μm)]
 route_node.component.r.waydirs = [90°]
-### finalize
-build!(floorplan)
+### render to `cell` with options from `target`
+render!(cell, floorplan, target)
 ```
 
 Now the route in `route_node` is guaranteed to pass through the point (600.0μm, -3000.0μm)
@@ -136,16 +136,16 @@ SchematicDrivenLayout.crossovers!
 It is often necessary to check that a planned `Schematic` obeys a set of constraints set
 by the fabrication process. For instance, one may want to verify that all the junctions
 in a floorplan are oriented in the right direction, e.g. pointing north. Instead of doing
-this by eye, users should call `check!(sch::Schematic)`. In the future, this method could
-run any number of checks, but at present it only checks the global orientation of
+this by eye, users should call `check!(sch::Schematic)`. This method can
+run any number of checks provided by the user, but by default it only checks the global orientation of
 [_checkable_](@ref SchematicDrivenLayout.check_rotation) components via the following methods:
 
 ```@docs
 SchematicDrivenLayout.rotations_valid
 ```
 
-To be able to `build!` a floorplan (i.e. turn components into their `CoordinateSystem` geometries), users _must_
-run `check!` first, otherwise `build` will throw an error.
+To be able to `build!` or `render!` a floorplan (i.e. turn components into their geometries), users _must_
+run `check!` first. Otherwise, these functions will throw an error.
 
 ## Visualization
 
