@@ -1345,7 +1345,9 @@ end
         kwargs...
     )
 
-Run `build!(sch, target)` and render the resulting geometry to `cs` using `target`'s rendering options.
+Render the schematic `sch` to `cs` using `target`'s rendering options, without modifying `sch`.
+
+Users must run `check!(sch)` before calling this method; otherwise, it will throw an error.
 
 The `strict` keyword should be `:error`, `:warn`, or `:no`.
 
