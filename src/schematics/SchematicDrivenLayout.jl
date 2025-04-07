@@ -85,6 +85,9 @@ export @component,
     flatten,
     flatten!,
     fuse!,
+    generate_component_definition,
+    generate_component_package,
+    generate_pdk,
     _geometry!,
     geometry,
     graph,
@@ -132,6 +135,7 @@ include("components/builtin_components.jl")
 include("routes.jl")
 include("components/variants.jl")
 include("solidmodels.jl")
+include("pdktools.jl")
 
 include("ExamplePDK/ExamplePDK.jl")
 
