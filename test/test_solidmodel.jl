@@ -218,9 +218,47 @@ import DeviceLayout.SolidModels.STP_UNIT
         isapprox.([x0, y0, x1, y1], ustrip.(STP_UNIT, [x0d, y0d, x1d, y1d]), atol=1e-6)
     )
     sm["test_bdy"] = SolidModels.get_boundary(sm["test", 2])
+    sm["test_bdy_xmin"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="X", position="min")
+    sm["test_bdy_xmax"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="X", position="max")
+    sm["test_bdy_ymin"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="Y", position="min")
+    sm["test_bdy_ymax"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="Y", position="max")
+    sm["test_bdy_zmin"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="Z", position="min")
+    sm["test_bdy_zmax"] =
+        SolidModels.get_boundary(sm["test", 2]; direction="Z", position="max")
+
+    @test isempty(
+        @test_logs (
+            :info,
+            "get_boundary(sm, test, 3): (test, 3) is not a physical group, thus has no boundary."
+        ) SolidModels.get_boundary(sm, "test", 3)
+    )
+    @test isempty(
+        @test_logs (
+            :info,
+            "get_boundary(sm, Physical Group test of dimension 2 with 4 entities): direction a is not all, X, Y, or Z, thus has no boundary."
+        ) SolidModels.get_boundary(sm["test", 2]; direction="a", position="min")
+    )
+    @test isempty(
+        @test_logs (
+            :info,
+            "get_boundary(sm, Physical Group test of dimension 2 with 4 entities): position no is not all, min, or max, thus has no boundary."
+        ) SolidModels.get_boundary(sm["test", 2]; direction="X", position="no")
+    )
+
     SolidModels.remove_group!(sm, "test", 2; recursive=false)
     @test !SolidModels.hasgroup(sm, "test", 2)
     @test !isempty(SolidModels.dimtags(sm["test_bdy", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_xmin", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_xmax", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_ymin", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_ymax", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_zmin", 1]))
+    @test !isempty(SolidModels.dimtags(sm["test_bdy_zmax", 1]))
 
     @test SolidModels.dimtags(get(sm, "foo", 2, sm["test_bdy", 1])) ==
           SolidModels.dimtags(sm["test_bdy", 1])
@@ -960,6 +998,38 @@ import DeviceLayout.SolidModels.STP_UNIT
     place!(cs, Rectangle(0.5μm, 0.5μm), :test)
     sm = test_sm()
     render!(sm, cs) # runs without error
+
+    # Use get_boundary, get_bounding_box, and set_periodic!
+    cs = CoordinateSystem("test", nm)
+    place!(cs, centered(Rectangle(500μm, 100μm)), :l1)
+    postrender_ops = [("ext", SolidModels.extrude_z!, (:l1, 20μm))]
+    sm = SolidModel("test"; overwrite=true)
+    zmap = (m) -> (0μm)
+    render!(sm, cs, zmap=zmap, postrender_ops=postrender_ops)
+    sm["Xmin"] = SolidModels.get_boundary(sm["ext", 3]; direction="X", position="min")
+    sm["Xmax"] = SolidModels.get_boundary(sm["ext", 3]; direction="X", position="max")
+    sm["Ymax"] = SolidModels.get_boundary(sm["ext", 3]; direction="Y", position="max")
+    @test isempty(
+        @test_logs (
+            :info,
+            "set_periodic!(sm, Xmin, Xmax, 1, 1) only supports d1 = d2 = 2."
+        ) SolidModels.set_periodic!(sm, "Xmin", "Xmax", 1, 1)
+    )
+    @test isempty(
+        @test_logs (
+            :info,
+            "set_periodic! only supports distinct parallel axis-aligned surfaces."
+        ) SolidModels.set_periodic!(sm, "Xmin", "Ymax")
+    )
+    @test all(
+        isapprox.(
+            SolidModels.get_bounding_box(2, [3, 5]),
+            ustrip.(STP_UNIT, (-250μm, -50μm, 0μm, 250μm, 50μm, 20μm)),
+            atol=1e-6
+        )
+    )
+    periodic_tags = SolidModels.set_periodic!(sm["Xmin", 2], sm["Xmax", 2])
+    @test !isempty(periodic_tags)
 
     # TODO: Composing OptionalStyle
 
