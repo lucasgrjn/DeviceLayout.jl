@@ -5,7 +5,7 @@ An `ExamplePDK` component module containing simple placeholder Josephson junctio
 
 `ExamplePDK` is intended for demonstrations, tutorials, and tests. While we aim to
 demonstrate best practices for Julia code and DeviceLayout.jl usage, these components are not
-optimized for device performance. Most importantly: breaking changes to `ExamplePDK` may
+optimized for device performance. Most importantly: **Breaking changes to `ExamplePDK` may
 occur within major versions.** In other words, don't depend on `ExamplePDK` in your own PDK
 or for real devices!
 """
@@ -26,9 +26,9 @@ that metal pattern based on process parameters like resist thicknesses and depos
 in this case, we take a shortcut and just define different rectangles for "artwork" and
 "simulation" which will be used or ignored based on rendering options.
 
-The "artwork" geometry contains an unrealistic placeholder pattern in a single JUNCTION_PATTERN
-layer. The "simulation" geometry adds METAL_POSITIVE rectangles representing junction leads,
-connected by a LUMPED_ELEMENT rectangle.
+The "artwork" geometry contains an unrealistic placeholder pattern in a single `JUNCTION_PATTERN`
+layer. The "simulation" geometry adds `METAL_POSITIVE` rectangles representing junction leads,
+connected by a `LUMPED_ELEMENT` rectangle.
 
      :island hook
         ↓    
@@ -67,7 +67,7 @@ connected by a LUMPED_ELEMENT rectangle.
 end
 
 function SchematicDrivenLayout._geometry!(cs::CoordinateSystem, jj::ExampleSimpleJunction)
-    (; w_jj, h_jj, h_ground_island, h_excess) = parameters(jj)
+    (; w_jj, h_jj, h_ground_island, h_excess) = jj
     # simulation geometry
     jj_rect = centered(Rectangle(w_jj, h_jj))
     top_lead =
@@ -102,9 +102,9 @@ SchematicDrivenLayout.allowed_rotation_angles(::ExampleSimpleJunction) = [0°, 1
 
 An example SQUID consisting of two [`ExampleSimpleJunction`](@ref)s.
 
-The "artwork" geometry contains an unrealistic placeholder pattern in a single JUNCTION_PATTERN
-layer. The "simulation" geometry adds METAL_POSITIVE rectangles representing junction leads,
-connected by a LUMPED_ELEMENT rectangle.
+The "artwork" geometry contains an unrealistic placeholder pattern in a single `JUNCTION_PATTERN`
+layer. The "simulation" geometry adds `METAL_POSITIVE` rectangles representing junction leads,
+connected by a `LUMPED_ELEMENT` rectangle.
 
       :island hook
          ↓    

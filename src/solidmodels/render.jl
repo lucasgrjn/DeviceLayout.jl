@@ -510,7 +510,7 @@ Render `cs` to `sm`.
   - `meshing_parameters`: `MeshingParameters` allows customization of the top level meshing
     parameters when calling Gmsh.
 
-Available postrendering operations are [`translate!`](@ref), [`extrude_z!`](@ref), [`revolve!`](@ref),
+Available postrendering operations include [`translate!`](@ref), [`extrude_z!`](@ref), [`revolve!`](@ref),
 [`union_geom!`](@ref), [`intersect_geom!`](@ref), [`difference_geom!`](@ref), [`fragment_geom!`](@ref), and [`box_selection`](@ref).
 (The geometric Boolean operations are only available for models using the OpenCASCADE kernel.)
 
@@ -805,7 +805,7 @@ function _get_boundary_points(dts)
     return filter(ent -> iszero(first(ent)), ents)
 end
 
-const POINT_MERGE_ATOL = 1e-9 # in STP_UNIT, i.e. atol=0.001nm
+const POINT_MERGE_ATOL = 1e-9 # in STP_UNIT, i.e. atol=1e-6nm
 function _get_or_add_points!(k, pts_xy, z, points_tree; atol=POINT_MERGE_ATOL)
     return _get_or_add_point!.(
         k,
