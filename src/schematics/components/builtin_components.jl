@@ -6,15 +6,17 @@ A component with empty geometry and an 8-point compass of hooks at the origin.
 @compdef struct WeatherVane{T} <: AbstractComponent{T}
     name::String = "vane"
 end
+WeatherVane(; kwargs...) = WeatherVane{typeof(1.0UPREFERRED)}(; kwargs...)
 hooks(::WeatherVane{T}) where {T} = compass(p0=zero(Point{T}))
 
 """
     Spacer{T} <: AbstractComponent{T}
 
-Provides an 8-point [compass](@ref SchematicDrivenLayout.compass) of hooks at each of two points separated by `p1`.
+A component with empty geometry and an 8-point [compass](@ref SchematicDrivenLayout.compass) of hooks at each of two points separated by `p1`.
 
 # Parameters
 
+  - `name`: The name of the spacer
   - `p1`: The endpoint of the spacer
 
 # Hooks
@@ -33,6 +35,7 @@ Provides an 8-point [compass](@ref SchematicDrivenLayout.compass) of hooks at ea
     name::String = "spacer"
     p1::Point{T} = zero(Point{T})
 end
+Spacer(; kwargs...) = Spacer{typeof(1.0UPREFERRED)}(; kwargs...)
 function hooks(s::Spacer{T}) where {T}
     return merge(compass("p0_", p0=zero(Point{T})), compass("p1_", p0=s.p1))
 end
@@ -62,6 +65,7 @@ An arrow with a given length and width along with a text annotation in the layer
     textsize::T = 25 * DeviceLayout.onemicron(T)
     meta = SemanticMeta(:annotation)
 end
+ArrowAnnotation(; kwargs...) = ArrowAnnotation{typeof(1.0UPREFERRED)}(; kwargs...)
 
 # Draw an arrow from left to right
 function _geometry!(cs::CoordinateSystem, ac::ArrowAnnotation)
@@ -94,19 +98,22 @@ end
 
 """
     struct GDSComponent{T} <: AbstractComponent{T}
-        name::String
-        cell::Cell{T}
-        hooks::NamedTuple
-        meta::DeviceLayout.Meta
-    end
+    GDSComponent(cell:Cell, hooks=compass(), parameters=(;))
+    GDSComponent([name::String=uniquename(cellname),]
+        filename::String,
+        cellname::String,
+        hooks=compass(),
+        parameters=(;))
 
 A component with geometry corresponding to an explicit `Cell`.
 
-The `meta` field does not affect metadata inside the
-`Cell`, but can still be used by a `LayoutTarget` to decide whether the component should
-be rendered or not.
+The `Cell` can be provided to the constructor directly, or as the path to a `.gds` file
+together with the name of a top-level cell in that file.
 
 Hooks are supplied by the user, with a default of [`compass()`](@ref).
+
+Users can specify their own `NamedTuple` of `parameters`. These parameters have no
+effect on geometry or hooks.
 """
 struct GDSComponent{T} <: AbstractComponent{T}
     name::String
@@ -119,13 +126,6 @@ struct GDSComponent{T} <: AbstractComponent{T}
     end
 end
 
-"""
-    GDSComponent(filename::String, cellname::String, hooks=compass(), meta=GDSMeta())
-
-Construct a GDSComponent using only the necessary fields `filename` and `cellname`.
-
-The component will have a unique name based on `cellname`.
-"""
 GDSComponent(
     filename::String,
     cellname::String,
@@ -152,7 +152,7 @@ function GDSComponent(
     return GDSComponent{coordinatetype(l_cell)}(name, l_cell, hooks, parameters)
 end
 
-DEFAULT_GDSCOMPONENT_PARAMS = (;)
+const DEFAULT_GDSCOMPONENT_PARAMS = (;)
 default_parameters(::Type{<:GDSComponent}) = DEFAULT_GDSCOMPONENT_PARAMS
 
 function _geometry!(cs::CoordinateSystem, l::GDSComponent)
