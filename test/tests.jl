@@ -116,6 +116,12 @@ end
     @test DeviceLayout.load_preference(DeviceLayout, "units") == "PreferMicrons"
     DeviceLayout.set_unit_preference!("PreferNanometers") # local_only => will override
     @test DeviceLayout.load_preference(DeviceLayout, "units") == "PreferNanometers"
+    # Delete units preference in generated LocalPreferences.toml; this ensures that
+    # a second execution of this test block will pass when running locally.
+    # Specifically, ensures that the line above 
+    #   DeviceLayout.set_unit_preference!("PreferMicrons"; local_only=false)
+    # is not ignored.
+    Preferences.delete_preferences!("DeviceLayout", "units"; force=true)
 end
 
 @testset "Polygon basics" begin
@@ -793,6 +799,26 @@ include("test_render.jl")
         push!(dup.refs, sref(Cell("Main", nm)))
         @test_logs (:warn, r"Duplicate cell name") save(joinpath(tdir, "dup.gds"), dup)
 
+        # Warns against invalid characters according to GDS spec
+        bad_names = ["bad.name", "badname!", "bad-name", repeat("b", 33)]
+        for n in bad_names
+            main = Cell(n, nm)
+            render!(main, Rectangle(10μm, 10μm), GDSMeta(0, 0))
+            path = joinpath(tdir, "bad_name.gds")
+            @test_logs (:warn, r"cell names must only have characters") save(path, main)
+            @test_nowarn save(path, main; spec_warnings=false) # w/ GDS spec warnings disabled
+        end
+
+        # Warns against layers not in [0, 63]
+        bad_layers = [GDSMeta(-1, 0), GDSMeta(64, 0)]
+        for l in bad_layers
+            main = Cell("main", nm)
+            render!(main, Rectangle(10μm, 10μm), l)
+            path = joinpath(tdir, "bad_layer.gds")
+            @test_logs (:warn, r"spec only permits layers from 0 to 63") save(path, main)
+            @test_nowarn save(path, main; spec_warnings=false) # w/ GDS spec warnings disabled
+        end
+
         # Corrupt file tests: records
         @test_logs (:warn, r"unknown record type 0xffff") load(
             joinpath(dirname(@__FILE__), "unknown_record.gds")
@@ -876,7 +902,8 @@ include("test_render.jl")
             (10.0, 10.0, 0.0, 0.0, 0.0),
             (0.0, 10.0, 0.0, 0.0, 0.0)
         ]
-        @test eval(Meta.parse(read(`$py3 test_ezdxf.py $path`, String))) == rect
+        pyscript = joinpath(@__DIR__, "test_ezdxf.py")
+        @test eval(Meta.parse(read(`$py3 $pyscript $path`, String))) == rect
     end
 
     @testset "Graphics formats" begin

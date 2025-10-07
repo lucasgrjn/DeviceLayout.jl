@@ -1,4 +1,5 @@
 using Test
+using Preferences
 using DeviceLayout, Unitful, FileIO, Logging
 import Unitful: s, °, DimensionError
 import Clipper
