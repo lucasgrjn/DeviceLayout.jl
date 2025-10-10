@@ -142,7 +142,7 @@ Reconcile the interpolation `b.r` with possible changes to `b.p`, `b.t0`, `b.t1`
 
 Also updates `b.p0`, `b.p1`.
 """
-function _update_interpolation!(b::BSpline)
+function _update_interpolation!(b::BSpline{T}) where {T}
     # Use true t range for interpolations defined by points that have been scaled out of [0,1]
     tmin = b.r.ranges[1][1]
     tmax = b.r.ranges[1][end]
@@ -316,14 +316,34 @@ function curvatureradius(b::BSpline{T}, s) where {T}
 end
 
 """
-    bspline!(p::Path{T}, nextpoints, α_end, sty::Style=contstyle1(p), endpoints_speed=2500μm)
+    bspline!(p::Path{T}, nextpoints, α_end, sty::Style=contstyle1(p);
+        endpoints_speed=2500μm,
+        endpoints_curvature=nothing,
+        auto_speed=false,
+        auto_curvature=false)
 
 Add a BSpline interpolation from the current endpoint of `p` through `nextpoints`.
 
 The interpolation reaches `nextpoints[end]` making the angle `α_end` with the positive x-axis.
 The `endpoints_speed` is "how fast" the interpolation leaves and enters its endpoints. Higher
-speed means that the start and end angles are approximately α1(p) and α_end over a longer
+speed means that the start and end angles are approximately `α1(p)` and `α_end` over a longer
 distance.
+
+If `auto_speed` is `true`, then `endpoints_speed` is ignored. Instead, the
+endpoint speeds are optimized to make curvature changes gradual as possible
+(minimizing the integrated square of the curvature derivative with respect
+to arclength).
+
+If `endpoints_curvature` (dimensions of `oneunit(T)^-1`) is specified, then
+additional waypoints are placed so that the curvature at the endpoints is equal to
+`endpoints_curvature`.
+
+If `auto_curvature` is specified, then `endpoints_curvature` is ignored.
+Instead, the curvature at the end of the previous segment of the path is used, or
+zero curvature if the path was empty.
+
+`endpoints_speed` and `endpoints_curvature` can also be provided as 2-element
+iterables to specify initial and final boundary conditions separately.
 """
 function bspline!(
     p::Path{T},
@@ -331,6 +351,9 @@ function bspline!(
     α_end,
     sty::Style=contstyle1(p);
     endpoints_speed=2500.0 * DeviceLayout.onemicron(T),
+    endpoints_curvature=nothing,
+    auto_speed=false,
+    auto_curvature=false,
     kwargs...
 ) where {T}
     !isempty(p) &&
@@ -338,12 +361,30 @@ function bspline!(
         error("`Paths.Straight` segments must follow `Paths.Corner`s.")
     ps = [p1(p)]
     append!(ps, nextpoints)
-    endpoints_speed = endpoints_speed * 1 / (length(ps) - 1) # From scaling interpolation from i=1:length(ps) => t=0..1
-    t0 = endpoints_speed * Point(cos(α1(p)), sin(α1(p)))
-    t1 = endpoints_speed * Point(cos(α_end), sin(α_end))
+    tangent_scale = 1 / (length(ps) - 1) # From scaling interpolation from i=1:length(ps) => t=0..1
+    t0, t1 = _bspline_tangents(tangent_scale, α1(p), α_end, endpoints_speed)
     seg = BSpline(ps, t0, t1)
+    auto_curvature && (endpoints_curvature = _last_curvature(p))
+    if auto_speed
+        seg.t0 = Point(cos(α0(seg)), sin(α0(seg))) * norm(seg.p[2] - seg.p[1])
+        seg.t1 = Point(cos(α1(seg)), sin(α1(seg))) * norm(seg.p[end] - seg.p[end - 1])
+        _set_endpoints_curvature!(seg, endpoints_curvature, add_points=true)
+        _optimize_bspline!(seg; endpoints_curvature)
+    elseif !isnothing(endpoints_curvature)
+        _set_endpoints_curvature!(seg, endpoints_curvature, add_points=true)
+        _update_interpolation!(seg)
+    end
     push!(p, Node(seg, convert(ContinuousStyle, sty)))
     return nothing
+end
+
+_bspline_tangents(scale, dir0, dir1, speed0speed1) =
+    _bspline_tangents(scale, dir0, dir1, first(speed0speed1), last(speed0speed1))
+
+function _bspline_tangents(scale, dir0, dir1, speed0::Coordinate, speed1=speed0)
+    t0 = scale * speed0 * Point(cos(dir0), sin(dir0))
+    t1 = scale * speed1 * Point(cos(dir1), sin(dir1))
+    return t0, t1
 end
 
 # Patch in new boundary condition for Interpolations.jl allowing us to specify derivative

@@ -69,14 +69,41 @@ end
 """
     Base.@kwdef struct BSplineRouting <: RouteRule
         endpoints_speed = 2500μm
+        auto_speed = false
+        endpoints_curvature = nothing
+        auto_curvature = false
     end
 
-Specifies rules for routing from one point to another using BSplines.
+Specifies rules for routing from one point to another using BSplines. Ignores `waydirs`.
 
-Ignores `waydirs`.
+Routes using this rule create a BSpline interpolation, similar to calling [`Paths.bspline!`](@ref) with
+the supplied keyword arguments.
+
+The `endpoints_speed` is "how fast" the interpolation leaves and enters its endpoints. Higher
+speed means that the start and end directions are maintained over a longer distance.
+
+If `auto_speed` is `true`, then `endpoints_speed` is ignored. Instead, the
+endpoint speeds are optimized to make curvature changes gradual as possible
+(minimizing the integrated square of the curvature derivative with respect
+to arclength).
+
+If `endpoints_curvature` (dimensions of inverse length) is specified, then
+additional waypoints are placed so that the curvature at the endpoints is equal to
+`endpoints_curvature`.
+
+If `auto_curvature` is specified, then `endpoints_curvature` is ignored.
+Instead, zero curvature is used. Note that `bspline!` in this case uses
+the ending curvature of the previous segment if it exists, but a `Route`
+does not have any previous segments.
+
+`endpoints_speed` and `endpoints_curvature` can also be provided as 2-element
+iterables to specify initial and final boundary conditions separately.
 """
 Base.@kwdef struct BSplineRouting <: RouteRule
     endpoints_speed = 2500μm
+    auto_speed = false
+    endpoints_curvature = nothing
+    auto_curvature = false
 end
 
 """
@@ -469,7 +496,10 @@ function _route!(
         vcat(waypoints, [p_end]),
         α_end,
         sty,
-        endpoints_speed=rule.endpoints_speed
+        endpoints_speed=rule.endpoints_speed,
+        auto_speed=rule.auto_speed,
+        endpoints_curvature=rule.endpoints_curvature,
+        auto_curvature=rule.auto_curvature
     )
 end
 
