@@ -94,8 +94,21 @@ function to_primitives(
     return flat
 end
 
-to_primitives(::SolidModel, ent::Ellipse; rounded=true, Δθ=360° / 8, kwargs...) =
-    rounded ? ent : to_polygons(ent; Δθ)
+function to_primitives(::SolidModel, ent::Ellipse; rounded=nothing, Δθ=nothing, kwargs...)
+    if !isnothing(rounded)
+        Base.depwarn(
+            "The `rounded` keyword for Ellipse is deprecated. Use `Δθ=nothing` (default) to keep as ellipse primitive, or `Δθ=some_angle` to discretize to polygon. For the same discretization as `rounded=false` with `Δθ` not specified, use `Δθ=360°/8`",
+            :to_primitives
+        )
+        rounded && return ent  # Keep as ellipse primitive
+        # Otherwise, use the old default Δθ for backward compatibility
+        return to_polygons(ent; Δθ=(isnothing(Δθ) ? 360° / 8 : Δθ), kwargs...)
+    else
+        isnothing(Δθ) && return ent  # Keep as ellipse primitive (default code path)
+        # Otherwise, use specified Δθ
+        return to_polygons(ent; Δθ, kwargs...)  # Discretize to polygon
+    end
+end
 
 # Path nodes that can be drawn with native curves (in OCC)
 # Gmsh does have its own native curves but we don't use them (the APIs and particularly
