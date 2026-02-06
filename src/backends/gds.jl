@@ -18,6 +18,7 @@ import FileIO: File, @format_str, stream, magic, skipmagic
 
 export GDS64
 export gdsbegin, gdsend, gdswrite
+export GDSWriterOptions
 
 const GDSVERSION   = UInt16(600)
 const HEADER       = 0x0002
@@ -60,6 +61,49 @@ const PROPVALUE    = 0x2C06
 const BOX          = 0x2D00
 const BOXTYPE      = 0x2E02
 const PLEX         = 0x2F03
+
+"""
+    @kwdef struct GDSWriterOptions
+
+Options controlling warnings and validation during GDS file writing.
+
+# Fields
+
+  - `max_layer::Int = 32767`: Maximum layer number that will not throw a warning.
+  - `max_datatype::Int = 32767`: Maximum datatype number that will not throw a warning.
+  - `warn_invalid_names::Bool = true`: Whether to warn about cell/text names that violate
+    the GDSII spec (must be ≤32 chars, only A-Z, a-z, 0-9, '_', '?', '\$').
+
+Warnings for layer number and datatype are configurable because different tools may have
+different limits. In the GDSII specification, layer and datatype must be in the range 0 to 63,
+but modern tools are rarely so strict. The hard limit is that the layer and datatype records
+are each two bytes. In the specification, they are two-byte signed integers, and for tools
+that conform in that regard, the maximum value is 32767. For that reason, larger values will
+cause a warning to be shown by default. However, a common extension of the format interprets
+these records as unsigned integers, allowing values up to 65535.
+
+# Examples
+
+```julia
+# Default: modern limits, name warnings enabled
+opts = GDSWriterOptions()
+
+# Strict GDSII spec compliance
+opts = GDSWriterOptions(max_layer=63, max_datatype=63)
+
+# No warnings at all
+opts = GDSWriterOptions(
+    max_layer=typemax(UInt16),
+    max_datatype=typemax(UInt16),
+    warn_invalid_names=false
+)
+```
+"""
+@kwdef struct GDSWriterOptions
+    max_layer::Int = 32767
+    max_datatype::Int = 32767
+    warn_invalid_names::Bool = true
+end
 
 const GDSTokens = Dict{UInt16, String}(
     0x0258 => "GDSVERSION",
@@ -249,7 +293,11 @@ gdswrite(io::IO, x::UInt16, y::AbstractFloat...) = gdswrite(io, x, convert.(GDS6
 function gdswrite(io::IO, x::UInt16, y::Int...)
     datatype = x & 0x00ff
     if datatype == 0x0002
-        gdswrite(io, x, map(Int16, y)...)
+        if GDSTokens[x] == "LAYER" || GDSTokens[x] == "DATATYPE"
+            gdswrite(io, x, map(UInt16, y)...) # Allow for GDSII extension that interprets as unsigned integer
+        else
+            gdswrite(io, x, map(Int16, y)...)
+        end
     elseif datatype == 0x0003
         gdswrite(io, x, map(Int32, y)...)
     elseif datatype == 0x0005
@@ -292,16 +340,20 @@ function gdsbegin(
 end
 
 """
-    gdswrite(io::IO, cell::Cell, dbs::Length, spec_warnings::Bool=true)
+    gdswrite(io::IO, cell::Cell, dbs::Length, options::GDSWriterOptions=GDSWriterOptions())
 
 Write a `Cell` to an IO buffer. The creation and modification date of the cell
 are written first, followed by the cell name, the polygons in the cell,
-and finally any references or arrays. If `spec_warnings`,
-warnings will be emitted on GDSII format violations.
+and finally any references or arrays. Warnings are controlled by `options`.
 """
-function gdswrite(io::IO, cell::Cell, dbs::Length, spec_warnings::Bool=true)
+function gdswrite(
+    io::IO,
+    cell::Cell,
+    dbs::Length,
+    options::GDSWriterOptions=GDSWriterOptions()
+)
     name = even(cell.name)
-    spec_warnings && namecheck(name)
+    options.warn_invalid_names && namecheck(name)
 
     y   = UInt16(Dates.value(Dates.Year(cell.create)))
     mo  = UInt16(Dates.value(Dates.Month(cell.create)))
@@ -321,13 +373,13 @@ function gdswrite(io::IO, cell::Cell, dbs::Length, spec_warnings::Bool=true)
     bytes = gdswrite(io, BGNSTR, y, mo, d, h, min, s, y1, mo1, d1, h1, min1, s1)
     bytes += gdswrite(io, STRNAME, name)
     for (x, m) in zip(cell.elements, cell.element_metadata)
-        bytes += gdswrite(io, x, m, dbs, spec_warnings)
+        bytes += gdswrite(io, x, m, dbs, options)
     end
     for x in cell.refs
         bytes += gdswrite(io, x, dbs)
     end
     for (x, m) in zip(cell.texts, cell.text_metadata)
-        bytes += gdswrite(io, x, m, dbs, spec_warnings)
+        bytes += gdswrite(io, x, m, dbs, options)
     end
     return bytes += gdswrite(io, ENDSTR)
 end
@@ -336,20 +388,26 @@ p2p(x::Length, dbs) = convert(Int, round(convert(Float64, x / dbs)))
 p2p(x::Real, dbs) = p2p(x * 1μm, dbs)
 
 """
-    gdswrite(io::IO, poly::Polygon{T}, meta, dbs, spec_warnings::Bool=true) where {T}
+    gdswrite(io::IO, poly::Polygon{T}, meta, dbs, options::GDSWriterOptions=GDSWriterOptions()) where {T}
 
 Write a polygon to an IO buffer. The layer and datatype are written first,
 then the boundary of the polygon is written in a 32-bit integer format with
 specified database scale.
 
-Note that polygons without units are presumed to be in microns. If `spec_warnings`,
-warnings will be emitted on GDSII format violations.
+Note that polygons without units are presumed to be in microns. Warnings are
+controlled by `options`.
 """
-function gdswrite(io::IO, poly::Polygon{T}, meta, dbs, spec_warnings::Bool=true) where {T}
+function gdswrite(
+    io::IO,
+    poly::Polygon{T},
+    meta,
+    dbs,
+    options::GDSWriterOptions=GDSWriterOptions()
+) where {T}
     bytes = gdswrite(io, BOUNDARY)
     lyr = gdslayer(meta)
-    spec_warnings && layercheck(lyr)
     dt = datatype(meta)
+    layerdatatypecheck(lyr, dt, options)
     bytes += gdswrite(io, LAYER, lyr)
     bytes += gdswrite(io, DATATYPE, dt)
 
@@ -363,16 +421,22 @@ function gdswrite(io::IO, poly::Polygon{T}, meta, dbs, spec_warnings::Bool=true)
 end
 
 """
-    gdswrite(io::IO, t::Texts.Text, dbs, spec_warnings::Bool=true)
+    gdswrite(io::IO, t::Texts.Text, meta, dbs, options::GDSWriterOptions=GDSWriterOptions())
 
-Write text to an IO buffer. Width without units presumed to be in microns. If `spec_warnings`,
-warnings will be emitted on GDSII format violations.
+Write text to an IO buffer. Width without units presumed to be in microns. Warnings are
+controlled by `options`.
 """
-function gdswrite(io::IO, t::Texts.Text, meta, dbs, spec_warnings::Bool=true)
+function gdswrite(
+    io::IO,
+    t::Texts.Text,
+    meta,
+    dbs,
+    options::GDSWriterOptions=GDSWriterOptions()
+)
     bytes = gdswrite(io, TEXT)
     lyr = gdslayer(meta)
-    spec_warnings && layercheck(lyr)
     dt = datatype(meta)
+    layerdatatypecheck(lyr, dt, options)
     bytes += gdswrite(io, LAYER, lyr)
     bytes += gdswrite(io, TEXTTYPE, dt)
 
@@ -391,7 +455,7 @@ function gdswrite(io::IO, t::Texts.Text, meta, dbs, spec_warnings::Bool=true)
     bytes += gdswrite(io, XY, x, y)
 
     str = even(t.text)
-    spec_warnings && namecheck(str)
+    options.warn_invalid_names && namecheck(str)
     bytes += gdswrite(io, STRING, str)
 
     return bytes += gdswrite(io, ENDEL)
@@ -496,14 +560,36 @@ function namecheck(a::String)
     )
 end
 
-function layercheck(layer)
-    return (0 <= layer <= 63) || @warn(
-        string(
-            "CellPolygon layer ",
-            layer,
-            ": The GDSII spec only permits layers from 0 to 63."
+"""
+    layerdatatypecheck(layer, datatype, options::GDSWriterOptions)
+
+Check layer and datatype against configured limits. Warns if either exceeds the
+maximum values specified in `options`.
+"""
+function layerdatatypecheck(layer, datatype, options::GDSWriterOptions)
+    if !(0 <= layer <= options.max_layer)
+        @warn(
+            string(
+                "Layer ",
+                layer,
+                " exceeds configured maximum (",
+                options.max_layer,
+                ")."
+            )
         )
-    )
+    end
+    if !(0 <= datatype <= options.max_datatype)
+        @warn(
+            string(
+                "Datatype ",
+                datatype,
+                " exceeds configured maximum (",
+                options.max_datatype,
+                ")."
+            )
+        )
+    end
+    return nothing
 end
 
 gdsend(io::IO) = gdswrite(io, ENDLIB)
@@ -512,7 +598,7 @@ gdsend(io::IO) = gdswrite(io, ENDLIB)
     save(::Union{AbstractString,IO}, cell0::Cell{T}, cell::Cell...)
     save(f::File{format"GDS"}, cell0::Cell, cell::Cell...;
         name="GDSIILIB", userunit=1μm, modify=now(), acc=now(),
-        spec_warnings=true, verbose=false)
+        options=GDSWriterOptions(), spec_warnings=nothing, verbose=false)
 
 This bottom method is implicitly called when you use the convenient syntax of
 the top method: `save("/path/to/my.gds", cells_i_want_to_save...)`
@@ -525,7 +611,9 @@ Keyword arguments include:
     with inferior unit support.
   - `modify`: date of last modification.
   - `acc`: date of last accession. It would be unusual to have this differ from `now()`.
-  - `spec_warnings`: whether to emit warnings due to GDSII format violations (default: `true`)
+  - `options`: a [`GDSWriterOptions`](@ref) controlling validation of `Cell` names and warnings
+    for maximum layer/datatype numbers.
+  - `spec_warnings`: if `false`, disables all warnings for max layer/datatype and invalid names
   - `verbose`: monitor the output of [`traverse!`](@ref) and [`order!`](@ref) to see if
     something funny is happening while saving.
 """
@@ -537,9 +625,13 @@ function save(
     userunit=1μm,
     modify=now(),
     acc=now(),
-    spec_warnings=true,
+    options::GDSWriterOptions=GDSWriterOptions(),
+    spec_warnings::Bool=true,
     verbose=false
 )
+    if !spec_warnings
+        options = GDSWriterOptions(typemax(UInt16), typemax(UInt16), false)
+    end
     dbs = dbscale(cell0, cell...)
     pad = mod(length(name), 2) == 1 ? "\0" : ""
     open(f, "w") do s
@@ -576,7 +668,7 @@ function save(
                 )
             end
             names[c.name] = c
-            bytes += gdswrite(io, c, dbs, spec_warnings)
+            bytes += gdswrite(io, c, dbs, options)
         end
         return bytes += gdsend(io)
     end
@@ -859,12 +951,12 @@ function boundary(s, dbs, verbose, nounits)
         elseif token == LAYER
             verbose && @info(string(infostr, " (LAYER)"))
             haslayer && error("Already read LAYER tag for this BOUNDARY tag.")
-            lyr = Int(ntoh(read(s, Int16)))
+            lyr = Int(ntoh(read(s, UInt16)))
             haslayer = true
         elseif token == DATATYPE
             verbose && @info(string(infostr, " (DATATYPE)"))
             hasdt && error("Already read DATATYPE tag for this BOUNDARY tag.")
-            dt = Int(ntoh(read(s, Int16)))
+            dt = Int(ntoh(read(s, UInt16)))
             hasdt = true
         elseif token == XY
             verbose && @info(string(infostr, " (XY)"))
