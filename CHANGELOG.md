@@ -6,6 +6,20 @@ The format of this changelog is based on
 
 ## Upcoming
 
+This release includes several new features and fixes involving Path styles:
+
+  - Added `Paths.PeriodicStyle`, which cycles between substyles in a repeating sequence
+  - Added `margin` keyword to `terminate!` to allow terminating a specified distance before the end of the path
+  - Added `Paths.round_trace_transitions!` for splicing rounded tapers between `Trace` styles
+  - Added `overlay_index` keyword to `terminate!` to allow applying terminations to overlay styles
+  - Fixed incorrect behaviors when extending certain `Paths`: overlay styles continue as overlays, while terminations continue as `NoRenderContinuous`
+  - Fixed incompatibility issues for combinations of compound, decorated, overlay, and termination styles
+  - Fixed bug where zero-length path segments could cause SolidModel rendering to fail
+  - Fixed bug where a generic taper inside a `simplify`-ed path would lead to an error thrown in rendering
+  - Fixed bug where references in a decorated style applied as an overlay would be ignored by `halo`
+
+There are also several minor features and fixes:
+
   - Added `SchematicDrivenLayout.filter_parameters` for sharing parameters between composite components and subcomponents
   - Added component style guide to docs
   - Added `rename_duplicates` option to `GDSWriterOptions`
