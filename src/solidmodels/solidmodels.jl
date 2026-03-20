@@ -66,7 +66,8 @@ import DeviceLayout:
     level,
     norm,
     render!,
-    uniquename
+    uniquename,
+    isapprox_angle
 import DeviceLayout.Paths: trace, gap, offset, extent, pathlength, bspline_approximation
 import DeviceLayout.Polygons:
     RelativeRounded,
@@ -80,6 +81,7 @@ import DeviceLayout.Polygons:
     r1,
     r2,
     radius
+import DeviceLayout.Curvilinear: edge_type_at_vertex, line_arc_cornerindices
 import Unitful: μm, mm, ustrip, °, uconvert, Length
 import FileIO: File
 
