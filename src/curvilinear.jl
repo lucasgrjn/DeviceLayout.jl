@@ -181,14 +181,21 @@ CurvilinearRegion(points::Vector{Point{T}}, segments) where {T} =
 CurvilinearRegion(points::Vector{Point{T}}, curves, curve_start_idx) where {T} =
     CurvilinearRegion(CurvilinearPolygon(points, curves, curve_start_idx))
 
-to_polygons(e::CurvilinearRegion{T}; kwargs...) where {T} =
-    to_polygons(difference2d(to_polygons(e.exterior), to_polygons.(e.holes)))
-to_polygons(e::CurvilinearRegion, sty::Polygons.Rounded; kwargs...) = to_polygons(
-    difference2d(
-        to_polygons(e.exterior, sty; kwargs...),
-        [to_polygons(h, sty; kwargs...) for h in e.holes]
+function to_polygons(e::CurvilinearRegion; kwargs...)
+    isempty(e.holes) && return [to_polygons(e.exterior; kwargs...)]
+    return to_polygons(
+        difference2d(to_polygons(e.exterior; kwargs...), to_polygons.(e.holes; kwargs...))
     )
-)
+end
+function to_polygons(e::CurvilinearRegion, sty::Polygons.Rounded; kwargs...)
+    isempty(e.holes) && return [to_polygons(e.exterior, sty; kwargs...)]
+    return to_polygons(
+        difference2d(
+            to_polygons(e.exterior, sty; kwargs...),
+            [to_polygons(h, sty; kwargs...) for h in e.holes]
+        )
+    )
+end
 
 function transform(e::CurvilinearRegion{T}, f::Transformation) where {T}
     return CurvilinearRegion{T}(transform(e.exterior, f), transform.(e.holes, Ref(f)))
@@ -581,7 +588,7 @@ function to_polygons(
     iszero(rad_raw) && return to_polygons(ent; kwargs...)
     relative = rad_raw isa Real
 
-    V = promote_type(float(S), float(T))
+    V = float(S) # No promotion with T (bypass Unitful.jl#845), entity coordinate type has priority
     poly = ent.p
     n = length(poly)
 
@@ -718,7 +725,7 @@ function to_polygons(
         end
     end
 
-    return Polygon(final_points)
+    return Polygon{V}(final_points)
 end
 
 # Intersect a parallel line (p_offset + s * v_line) with a circle of radius D centered at O.
@@ -793,7 +800,7 @@ function rounded_corner_line_arc(
     min_side_len=radius,
     min_angle=1e-3
 ) where {T, S <: DeviceLayout.Coordinate}
-    V = promote_type(T, S)
+    V = float(T)
     r = convert(V, radius)
 
     # Check straight edge length against min_side_len
