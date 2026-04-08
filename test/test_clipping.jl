@@ -920,3 +920,53 @@ end
     # Ensure the curve_start_idx are sorted absolutely
     @test issorted(abs.(rcp.curve_start_idx))
 end
+
+@testitem "Hole sorting" setup = [CommonTestSetup] begin
+    # Issue #175
+    # Shoelace formula for signed polygon area
+    area(p) =
+        sum(
+            (gety.(p.p) + gety.(circshift(p.p, -1))) .*
+            (getx.(p.p) - getx.(circshift(p.p, -1)))
+        ) / 2
+
+    @testset "Hole sorting" begin
+        c1 = rotate(centered(Rectangle(0.5mm, 0.5mm)), 45°) - Point(0mm, 0.5mm)
+        c2 = c1 + Point(0mm, 1mm)
+        c3 = convert(Polygon, centered(Rectangle(3mm, 3mm)))
+        cp = difference2d(c3, [c1, c2])
+
+        c = Cell("test175_mre", mm)
+        render!(c, cp, GDSMeta())
+        # No regression
+        original_area = abs(area(c3)) - abs(area(c1)) - abs(area(c2))
+        rendered_area = sum(abs(area(el)) for el in c.elements)
+        @test rendered_area ≈ original_area
+        # Without fix, positive offset will add too much area because it expands the bad cut
+        off = to_polygons(union2d(offset(elements(c), 0.05mm)))
+        @test area(only(off)) ≈ (3.1mm)^2 - 2 * (0.4mm)^2
+    end
+
+    @testset "Nested holes" begin
+        # As with MRE but one hole has holes
+        c1 = rotate(centered(Rectangle(0.5mm, 0.5mm)), 45°) - Point(0mm, 0.5mm)
+        c2 = c1 + Point(0mm, 1mm)
+        c3 = convert(Polygon, centered(Rectangle(3mm, 3mm)))
+        c4 = rotate(centered(Rectangle(0.25mm, 0.25mm)), 45°) - Point(0mm, 0.5mm)
+        cp = difference2d(c3, [c1, c2])
+        cp = difference2d(c3, [difference2d(c1, c4), c2])
+
+        c = Cell("test175_mre", mm)
+        render!(c, cp, GDSMeta())
+
+        # no regression: 
+        original_area = abs(area(c3)) - abs(area(c1)) - abs(area(c2)) + abs(area(c4))
+        rendered_area = sum(abs(area(el)) for el in c.elements)
+        @test rendered_area ≈ original_area
+        # Check offset area as test for bad cuts
+        off = to_polygons(union2d(offset(elements(c), 0.05mm)))
+        @test length(off) == 2
+        @test area(off[1]) ≈ (0.35mm)^2
+        @test area(off[2]) ≈ (3.1mm)^2 - 2 * (0.4mm)^2
+    end
+end

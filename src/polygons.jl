@@ -410,6 +410,21 @@ Return the array of `Point` objects that make up the contour of the `PolyNode`
 """
 points(x::Clipper.PolyNode) = x.contour
 
+# Collect all contour point arrays from a PolyNode tree (no keyhole conversion)
+function _all_contours(node::Clipper.PolyNode{S}) where {S}
+    contours = Vector{S}[]
+    _collect_contours!(contours, node)
+    return contours
+end
+
+function _collect_contours!(contours, node::Clipper.PolyNode)
+    c = contour(node)
+    !isempty(c) && push!(contours, c)
+    for child in children(node)
+        _collect_contours!(contours, child)
+    end
+end
+
 function DeviceLayout.transform(r::Rectangle, f::Transformation)
     preserves_angles(f) && return transform(r, ScaledIsometry(f))
     return f(convert(Polygon, r))
@@ -976,9 +991,11 @@ end
 # Clipping requires an AbstractVector{Polygon{T}}
 _normalize_clip_arg(p::Polygon) = [p]
 _normalize_clip_arg(p::GeometryEntity) = _normalize_clip_arg(to_polygons(p))
+_normalize_clip_arg(p::ClippedPolygon{T}) where {T} =
+    Polygon{T}[Polygon(c) for c in _all_contours(p.tree)]
 _normalize_clip_arg(p::AbstractArray{Polygon{T}}) where {T} = p
 _normalize_clip_arg(p::AbstractArray{<:GeometryEntity{T}}) where {T} =
-    reduce(vcat, to_polygons.(p); init=Polygon{T}[])
+    reduce(vcat, _normalize_clip_arg.(p); init=Polygon{T}[])
 _normalize_clip_arg(p::Union{GeometryStructure, GeometryReference}) =
     _normalize_clip_arg(flat_elements(p))
 _normalize_clip_arg(p::Pair{<:Union{GeometryStructure, GeometryReference}}) =
@@ -1947,7 +1964,7 @@ function interiorcuts(nodeortree::Clipper.PolyNode, outpolys::Vector{Polygon{T}}
         loop_node.prev = last(nodes)
         last(nodes).next = loop_node
 
-        for hole in children(enclosing)
+        for hole in sort(children(enclosing), by=h -> uniqueray(contour(h))[1].p0.y)
             # process all the holes.
             interiorcuts(hole, outpolys)
 

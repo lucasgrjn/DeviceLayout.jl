@@ -78,7 +78,7 @@ function render!(c::Cell{S}, p::Polygon, meta::GDSMeta=GDSMeta(); kwargs...) whe
         clip(Clipper.ClipTypeIntersection, p, bestclip)
         clip(Clipper.ClipTypeDifference, p, bestclip)
     ]
-        render!(c, q, meta)
+        render!(c, q, meta; kwargs...)
     end
     return c
 end
