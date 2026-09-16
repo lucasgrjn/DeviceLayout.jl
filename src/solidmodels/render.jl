@@ -105,7 +105,7 @@ function to_primitives(
 )
     if !isnothing(rounded)
         Base.depwarn(
-            "The `rounded` keyword for Ellipse is deprecated. Use `Δθ` to control ellipse discretization.",
+            "The `rounded` keyword for Ellipse is deprecated. Use `Δθ=some_angle` to discretize to a polygon; for the same discretization as `rounded=false` with `Δθ` not specified, use `Δθ=360°/8`",
             :to_primitives
         )
         if !rounded && isnothing(Δθ)
@@ -1244,12 +1244,14 @@ function _render_orchestrator!(
     gmsh.model.set_current(name(sm))
 
     if !isnothing(meshing_parameters)
-        Base.depwarn("Using `MeshingParameters` is deprecated!", :render!, force=true)
+        msg = "The `meshing_parameters` keyword is deprecated. Use the individual mesh control functions `SolidModels.mesh_scale`, `SolidModels.mesh_order`, and `SolidModels.mesh_grading_default`, along with `gmsh_options`, instead"
+        if meshing_parameters.apply_size_to_surfaces
+            msg *= "; `apply_size_to_surfaces` has no effect and should be removed"
+        end
+        Base.depwarn(msg, :render!)
         mesh_scale(meshing_parameters.mesh_scale)
         mesh_order(meshing_parameters.mesh_order, meshing_parameters.high_order_optimize)
         mesh_grading_default(meshing_parameters.α_default)
-        meshing_parameters.apply_size_to_surfaces &&
-            @warn "`apply_size_to_surfaces` is deprecated and has no effect"
         gmsh_options["Mesh.Algorithm"] = meshing_parameters.surface_mesh_algorithm
         gmsh_options["Mesh.Algorithm3D"] = meshing_parameters.volume_mesh_algorithm
         merge!(gmsh_options, meshing_parameters.options)
